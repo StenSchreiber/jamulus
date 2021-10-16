@@ -1404,6 +1404,8 @@ void CServer::CreateAndSendChatTextForAllConChannels ( const int      iCurChanID
         ChanName.toHtmlEscaped() +
         "</b></font> " + strChatText.toHtmlEscaped();
 
+    qInfo() << "Chat Message by " << ChanName.toHtmlEscaped() << ": " << strChatText.toHtmlEscaped();
+
 
     // Send chat text to all connected clients ---------------------------------
     for ( int i = 0; i < iMaxNumChannels; i++ )
@@ -1443,10 +1445,32 @@ void CServer::CreateOtherMuteStateChanged ( const int  iCurChanID,
     }
 }
 
-int CServer::GetFreeChan()
+int CServer::GetFreeChan ( const CHostAddress& CheckAddr )
 {
+    // load owner address
+    QString owner_file = "/etc/jamulus.owneraddr";
+    if ( QFileInfo ( owner_file ).exists() )
+    {
+        QFile file ( owner_file );
+
+        if ( file.open ( QIODevice::ReadOnly | QIODevice::Text ) )
+        {
+            QString owner_host = QString(file.readAll());
+            // use entire file content for the welcome message
+            QHostAddress owner_host_addr = QHostAddress( owner_host );
+            QHostAddress check_host_addr = CheckAddr.InetAddr;
+            file.close();
+                   
+            // check if address is owner address
+            if (owner_host_addr == check_host_addr)
+            {
+                qInfo() << "Detected owner and assigned channel 0. (" << owner_host_addr.toString() << ")";
+                return 0;
+            }
+        }
+    }
     // look for a free channel
-    for ( int i = 0; i < iMaxNumChannels; i++ )
+    for ( int i = 1; i < iMaxNumChannels; i++ )
     {
         if ( !vecChannels[i].IsConnected() )
         {
@@ -1546,8 +1570,9 @@ bool CServer::PutAudioData ( const CVector<uint8_t>& vecbyRecBuf,
 
     if ( iCurChanID == INVALID_CHANNEL_ID )
     {
+        
         // a new client is calling, look for free channel
-        iCurChanID = GetFreeChan();
+        iCurChanID = GetFreeChan( HostAdr );
 
         if ( iCurChanID != INVALID_CHANNEL_ID )
         {
@@ -1658,17 +1683,20 @@ void CServer::WriteHTMLChannelList()
         {
             // no clients are connected -> empty server
             streamFileOut << "  No client connected\n";
+            qInfo() << "Channellist ------- (Empty)";
         }
         else
         {
             streamFileOut << "<ul>\n";
+            qInfo() << "Channellist -------";
 
             // write entry for each connected client
             for ( int i = 0; i < iMaxNumChannels; i++ )
             {
                 if ( vecChannels[i].IsConnected() )
                 {
-                    streamFileOut << "  <li>" << vecChannels[i].GetName().toHtmlEscaped() << "</li>\n";
+                    qInfo() << " -> " << vecChannels[i].GetName().toHtmlEscaped() << " (" << vecChannels[i].GetAddress().toString() << ") at Channel " << i;
+                    streamFileOut << "  <li>" << vecChannels[i].GetName().toHtmlEscaped() << " (" << vecChannels[i].GetAddress().toString() << ") at Channel " << i << "</li>\n";
                 }
             }
 
