@@ -318,7 +318,7 @@ protected:
     int    vecChannelOrder[MAX_NUM_CHANNELS];
     QMutex MutexChanOrder;
 
-    QHostAddress HostAddressOwner;
+    CHostAddress HostAddressOwner;
 
     CProtocol ConnLessProtocol;
     QMutex    Mutex;
