@@ -256,8 +256,9 @@ public:
     int GetClientNumAudioChannels ( const int iChanNum ) { return vecChannels[iChanNum].GetNumAudioChannels(); }
 
 protected:
-    // host 
+    // reserve owner 
     void LoadOwnerAddr ();
+    bool IsOwnerRegistered();
 
     // access functions for actual channels
     bool IsConnected ( const int iChanNum ) { return vecChannels[iChanNum].IsConnected(); }
@@ -318,7 +319,7 @@ protected:
     int    vecChannelOrder[MAX_NUM_CHANNELS];
     QMutex MutexChanOrder;
 
-    CHostAddress HostAddressOwner;
+    QHostAddress HostAddressOwner;
 
     CProtocol ConnLessProtocol;
     QMutex    Mutex;
