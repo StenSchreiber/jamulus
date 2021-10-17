@@ -257,7 +257,7 @@ public:
 
 protected:
     // host 
-    void CServer::LoadOwnerAddr ();
+    void LoadOwnerAddr ();
 
     // access functions for actual channels
     bool IsConnected ( const int iChanNum ) { return vecChannels[iChanNum].IsConnected(); }

@@ -1431,6 +1431,7 @@ void CServer::CreateAndSendChatTextForAllConChannels ( const int iCurChanID, con
 
     const QString strActualMessageText = "<font color=\"" + sCurColor + "\">(" + QTime::currentTime().toString ( "hh:mm:ss AP" ) + ") <b>" +
                                          ChanName.toHtmlEscaped() + "</b></font> " + strChatText.toHtmlEscaped();
+    qInfo() << "Chat Message by " << ChanName.toHtmlEscaped() << ": " << strChatText.toHtmlEscaped();
 
     // Send chat text to all connected clients ---------------------------------
     for ( int i = 0; i < iMaxNumChannels; i++ )
