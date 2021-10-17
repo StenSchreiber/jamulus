@@ -1521,8 +1521,8 @@ int CServer::FindChannel ( const CHostAddress& CheckAddr, const bool bAllowNew )
 
     // The last channel is reserved for owner
     LoadOwnerAddr();
-    is_owner = CheckAddr.Compare(HostAddressOwner);
-    is_owner_registered = FindChannel(HostAddressOwner, false) != INVALID_CHANNEL_ID
+    bool is_owner = CheckAddr.Compare((const CHostAddress) HostAddressOwner);
+    bool is_owner_registered = FindChannel(HostAddressOwner, false) != INVALID_CHANNEL_ID
     if ( is_owner )
     {
         qInfo() << "Detected owner (" << HostAddressOwner.toString() << ")";
@@ -1568,7 +1568,7 @@ void CServer::LoadOwnerAddr ()
          {
              QString owner_host = QString(owner_file.readAll());
              HostAddressOwner = QHostAddress( owner_host );
-             file.close();
+             owner_file.close();
          }
      }
 }
