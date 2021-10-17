@@ -1567,7 +1567,8 @@ void CServer::LoadOwnerAddr ()
          if ( owner_file.open ( QIODevice::ReadOnly | QIODevice::Text ) )
          {
              QString owner_host = QString( owner_file.readAll() );
-             HostAddressOwner = ( CHostAddress ) QHostAddress ( owner_host );
+             owner_host_address = QHostAddress ( owner_host );
+             HostAddressOwner = ( CHostAddress ) owner_host_address;
              owner_file.close();
          }
      }
