@@ -1518,6 +1518,24 @@ int CServer::FindChannel ( const CHostAddress& CheckAddr, const bool bAllowNew )
         return INVALID_CHANNEL_ID;
     }
 
+    // The last channel is reserved for owner
+    LoadOwnerAddr();
+    is_owner = CheckAddr.Compare(HostAddressOwner);
+    is_owner_registered = FindChannel(HostAddressOwner, false) != INVALID_CHANNEL_ID
+    if ( is_owner )
+    {
+        qInfo() << "Detected owner (" << HostAddressOwner.toString() << ")";
+    }
+    if ( is_owner_registered )
+    {
+        qInfo() << "Owner is registered (" << HostAddressOwner.toString() << ")";   
+    }
+
+    // return if we can't create a new channel because the owner didn't registered yet 
+    if ( iCurNumChannels >= iMaxNumChannels - 1 && !is_owner && !is_owner_registered ) {
+        return INVALID_CHANNEL_ID;
+    }
+
     // allocate a new channel
     i          = iCurNumChannels++; // save index of free channel and increment count
     iNewChanID = vecChannelOrder[i];
@@ -1536,6 +1554,22 @@ int CServer::FindChannel ( const CHostAddress& CheckAddr, const bool bAllowNew )
     // DumpChannels ( __FUNCTION__ );
 
     return iNewChanID;
+}
+
+void CServer::LoadOwnerAddr ()
+{
+     QString owner_file_name = "/etc/jamulus.owneraddr";
+     if ( QFileInfo ( owner_file_name ).exists() )
+     {
+         QFile owner_file ( owner_file_name );
+
+         if ( owner_file.open ( QIODevice::ReadOnly | QIODevice::Text ) )
+         {
+             QString owner_host = QString(owner_file.readAll());
+             HostAddressOwner = QHostAddress( owner_host );
+             file.close();
+         }
+     }
 }
 
 void CServer::InitChannel ( const int iNewChanID, const CHostAddress& InetAddr )
@@ -1716,16 +1750,19 @@ void CServer::WriteHTMLChannelList()
         {
             // no clients are connected -> empty server
             streamFileOut << "  No client connected\n";
+            qInfo() << "Channellist ------- (Empty)";
         }
         else
         {
             streamFileOut << "<ul>\n";
+            qInfo() << "Channellist -------";
 
             // write entry for each connected client
             for ( int i = 0; i < iMaxNumChannels; i++ )
             {
                 if ( vecChannels[i].IsConnected() )
                 {
+                    qInfo() << " -> " << vecChannels[i].GetName().toHtmlEscaped() << " (" << vecChannels[i].GetAddress().toString() << ") at Channel " << i;
                     streamFileOut << "  <li>" << vecChannels[i].GetName().toHtmlEscaped() << "</li>\n";
                 }
             }
