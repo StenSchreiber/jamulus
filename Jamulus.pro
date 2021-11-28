@@ -1,4 +1,4 @@
-VERSION = 3.8.1rc1dev
+VERSION = 3.8.1dev
 
 # use target name which does not use a capital letter at the beginning
 contains(CONFIG, "noupcasename") {
@@ -749,6 +749,10 @@ DISTFILES += ChangeLog \
     src/res/CLEDRedSmall.png \
     src/res/CLEDYellow.png \
     src/res/CLEDYellowSmall.png \
+    src/res/LEDBlackSmall.png \
+    src/res/LEDGreenSmall.png \
+    src/res/LEDRedSmall.png \
+    src/res/LEDYellowSmall.png \
     src/res/IndicatorGreen.png \
     src/res/IndicatorYellow.png \
     src/res/IndicatorRed.png \
@@ -799,6 +803,7 @@ DISTFILES += ChangeLog \
     src/res/instruments/trombone.png \
     src/res/instruments/trumpet.png \
     src/res/instruments/tuba.png \
+    src/res/instruments/vibraphone.png \
     src/res/instruments/violin.png \
     src/res/instruments/vocal.png \
     src/res/instruments/guitarvocal.png \

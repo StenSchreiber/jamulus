@@ -261,6 +261,16 @@ CClientSettingsDlg::CClientSettingsDlg ( CClient* pNCliP, CClientSettings* pNSet
 
     cbxSkin->setAccessibleName ( tr ( "Skin combo box" ) );
 
+    // MeterStyle
+    lblMeterStyle->setWhatsThis ( "<b>" + tr ( "Meter Style" ) + ":</b> " +
+                                  tr ( "Select the meter style to be used for the level meters. The "
+                                       "Narrow Bar and Small LEDs options only apply to the mixerboard. When "
+                                       "Narrow Bar is selected, the input meters are set to Bar. When "
+                                       "Small LEDs is selected, the input meters are set to Round LEDs. "
+                                       "The remaining options apply to the mixerboard and input meters." ) );
+
+    cbxMeterStyle->setAccessibleName ( tr ( "Meter Style combo box" ) );
+
     // Interface Language
     lblLanguage->setWhatsThis ( "<b>" + tr ( "Language" ) + ":</b> " + tr ( "Select the language to be used for the user interface." ) );
 
@@ -343,13 +353,13 @@ CClientSettingsDlg::CClientSettingsDlg ( CClient* pNCliP, CClientSettings* pNSet
     cbxInputBoost->setAccessibleName ( tr ( "Input Boost combo box" ) );
 
     // custom directory server address
-    QString strCentrServAddr = "<b>" + tr ( "Custom Directory Server Address" ) + ":</b> " +
-                               tr ( "Leave this blank unless you need to enter the address of a directory "
-                                    "server other than the default." );
+    QString strCustomDirectoryAddress = "<b>" + tr ( "Custom Directory Server Address" ) + ":</b> " +
+                                        tr ( "Leave this blank unless you need to enter the address of a directory "
+                                             "server other than the default." );
 
-    lblCentralServerAddress->setWhatsThis ( strCentrServAddr );
-    cbxCentralServerAddress->setWhatsThis ( strCentrServAddr );
-    cbxCentralServerAddress->setAccessibleName ( tr ( "Directory server address combo box" ) );
+    lblDirectoryAddress->setWhatsThis ( strCustomDirectoryAddress );
+    cbxDirectoryAddress->setWhatsThis ( strCustomDirectoryAddress );
+    cbxDirectoryAddress->setAccessibleName ( tr ( "Directory server address combo box" ) );
 
     // current connection status parameter
     QString strConnStats = "<b>" + tr ( "Audio Upstream Rate" ) + ":</b> " +
@@ -422,12 +432,21 @@ CClientSettingsDlg::CClientSettingsDlg ( CClient* pNCliP, CClientSettings* pNSet
     cbxSkin->addItem ( tr ( "Compact" ) ); // GD_SLIMFADER
     cbxSkin->setCurrentIndex ( static_cast<int> ( pClient->GetGUIDesign() ) );
 
+    // MeterStyle combo box
+    cbxMeterStyle->clear();
+    cbxMeterStyle->addItem ( tr ( "LEDs" ) );       // MT_LED
+    cbxMeterStyle->addItem ( tr ( "Bar" ) );        // MT_BAR
+    cbxMeterStyle->addItem ( tr ( "Narrow Bar" ) ); // MT_SLIM_BAR
+    cbxMeterStyle->addItem ( tr ( "Round LEDs" ) ); // MT_SLIM_LED
+    cbxMeterStyle->addItem ( tr ( "Small LEDs" ) ); // MT_SMALL_LED
+    cbxMeterStyle->setCurrentIndex ( static_cast<int> ( pClient->GetMeterStyle() ) );
+
     // language combo box (corrects the setting if language not found)
     cbxLanguage->Init ( pSettings->strLanguage );
 
     // init custom directory server address combo box (max MAX_NUM_SERVER_ADDR_ITEMS entries)
-    cbxCentralServerAddress->setMaxCount ( MAX_NUM_SERVER_ADDR_ITEMS );
-    cbxCentralServerAddress->setInsertPolicy ( QComboBox::NoInsert );
+    cbxDirectoryAddress->setMaxCount ( MAX_NUM_SERVER_ADDR_ITEMS );
+    cbxDirectoryAddress->setInsertPolicy ( QComboBox::NoInsert );
 
     // update new client fader level edit box
     edtNewClientLevel->setText ( QString::number ( pSettings->iNewClientFaderLevel ) );
@@ -643,15 +662,17 @@ CClientSettingsDlg::CClientSettingsDlg ( CClient* pNCliP, CClientSettings* pNSet
                        this,
                        &CClientSettingsDlg::OnGUIDesignActivated );
 
-    QObject::connect ( cbxCentralServerAddress->lineEdit(),
-                       &QLineEdit::editingFinished,
-                       this,
-                       &CClientSettingsDlg::OnCentralServerAddressEditingFinished );
-
-    QObject::connect ( cbxCentralServerAddress,
+    QObject::connect ( cbxMeterStyle,
                        static_cast<void ( QComboBox::* ) ( int )> ( &QComboBox::activated ),
                        this,
-                       &CClientSettingsDlg::OnCentralServerAddressEditingFinished );
+                       &CClientSettingsDlg::OnMeterStyleActivated );
+
+    QObject::connect ( cbxDirectoryAddress->lineEdit(), &QLineEdit::editingFinished, this, &CClientSettingsDlg::OnDirectoryAddressEditingFinished );
+
+    QObject::connect ( cbxDirectoryAddress,
+                       static_cast<void ( QComboBox::* ) ( int )> ( &QComboBox::activated ),
+                       this,
+                       &CClientSettingsDlg::OnDirectoryAddressEditingFinished );
 
     QObject::connect ( cbxLanguage, &CLanguageComboBox::LanguageChanged, this, &CClientSettingsDlg::OnLanguageChanged );
 
@@ -707,7 +728,7 @@ CClientSettingsDlg::CClientSettingsDlg ( CClient* pNCliP, CClientSettings* pNSet
 void CClientSettingsDlg::showEvent ( QShowEvent* )
 {
     UpdateDisplay();
-    UpdateCustomCentralServerComboBox();
+    UpdateDirectoryServerComboBox();
 
     // set the name
     pedtAlias->setText ( pClient->ChannelInfo.strName );
@@ -936,6 +957,13 @@ void CClientSettingsDlg::OnGUIDesignActivated ( int iDesignIdx )
     UpdateDisplay();
 }
 
+void CClientSettingsDlg::OnMeterStyleActivated ( int iMeterStyleIdx )
+{
+    pClient->SetMeterStyle ( static_cast<EMeterStyle> ( iMeterStyleIdx ) );
+    emit MeterStyleChanged();
+    UpdateDisplay();
+}
+
 void CClientSettingsDlg::OnAutoJitBufStateChanged ( int value )
 {
     pClient->SetDoAutoSockBufSize ( value == Qt::Checked );
@@ -950,24 +978,24 @@ void CClientSettingsDlg::OnEnableOPUS64StateChanged ( int value )
 
 void CClientSettingsDlg::OnFeedbackDetectionChanged ( int value ) { pSettings->bEnableFeedbackDetection = value == Qt::Checked; }
 
-void CClientSettingsDlg::OnCentralServerAddressEditingFinished()
+void CClientSettingsDlg::OnDirectoryAddressEditingFinished()
 {
     // if the user has selected and deleted an entry in the combo box list,
     // we delete the corresponding entry in the directory server address vector
-    if ( cbxCentralServerAddress->currentText().isEmpty() && cbxCentralServerAddress->currentData().isValid() )
+    if ( cbxDirectoryAddress->currentText().isEmpty() && cbxDirectoryAddress->currentData().isValid() )
     {
-        pSettings->vstrCentralServerAddress[cbxCentralServerAddress->currentData().toInt()] = "";
+        pSettings->vstrDirectoryAddress[cbxDirectoryAddress->currentData().toInt()] = "";
     }
     else
     {
         // store new address at the top of the list, if the list was already
         // full, the last element is thrown out
-        pSettings->vstrCentralServerAddress.StringFiFoWithCompare ( NetworkUtil::FixAddress ( cbxCentralServerAddress->currentText() ) );
+        pSettings->vstrDirectoryAddress.StringFiFoWithCompare ( NetworkUtil::FixAddress ( cbxDirectoryAddress->currentText() ) );
     }
 
     // update combo box list and inform connect dialog about the new address
-    UpdateCustomCentralServerComboBox();
-    emit CustomCentralServerAddrChanged();
+    UpdateDirectoryServerComboBox();
+    emit DirectoryAddressChanged();
 }
 
 void CClientSettingsDlg::OnSndCrdBufferDelayButtonGroupClicked ( QAbstractButton* button )
@@ -1011,17 +1039,17 @@ void CClientSettingsDlg::UpdateDisplay()
     }
 }
 
-void CClientSettingsDlg::UpdateCustomCentralServerComboBox()
+void CClientSettingsDlg::UpdateDirectoryServerComboBox()
 {
-    cbxCentralServerAddress->clear();
-    cbxCentralServerAddress->clearEditText();
+    cbxDirectoryAddress->clear();
+    cbxDirectoryAddress->clearEditText();
 
     for ( int iLEIdx = 0; iLEIdx < MAX_NUM_SERVER_ADDR_ITEMS; iLEIdx++ )
     {
-        if ( !pSettings->vstrCentralServerAddress[iLEIdx].isEmpty() )
+        if ( !pSettings->vstrDirectoryAddress[iLEIdx].isEmpty() )
         {
             // store the index as user data to the combo box item, too
-            cbxCentralServerAddress->addItem ( pSettings->vstrCentralServerAddress[iLEIdx], iLEIdx );
+            cbxDirectoryAddress->addItem ( pSettings->vstrDirectoryAddress[iLEIdx], iLEIdx );
         }
     }
 }

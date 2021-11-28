@@ -666,6 +666,19 @@ void CLanguageComboBox::OnLanguageActivated ( int iLanguageIdx )
         emit LanguageChanged ( itemData ( iLanguageIdx ).toString() );
     }
 }
+
+static inline QString TruncateString ( QString str, int position )
+{
+    QTextBoundaryFinder tbfString ( QTextBoundaryFinder::Grapheme, str );
+
+    tbfString.setPosition ( position );
+    if ( !tbfString.isAtBoundary() )
+    {
+        tbfString.toPreviousBoundary();
+        position = tbfString.position();
+    }
+    return str.left ( position );
+}
 #endif
 
 /******************************************************************************\
@@ -829,12 +842,12 @@ CHostAddress NetworkUtil::GetLocalAddress6()
     }
 }
 
-QString NetworkUtil::GetCentralServerAddress ( const ECSAddType eCentralServerAddressType, const QString& strCentralServerAddress )
+QString NetworkUtil::GetDirectoryAddress ( const EDirectoryType eDirectoryType, const QString& strDirectoryAddress )
 {
-    switch ( eCentralServerAddressType )
+    switch ( eDirectoryType )
     {
     case AT_CUSTOM:
-        return strCentralServerAddress;
+        return strDirectoryAddress;
     case AT_ANY_GENRE2:
         return CENTSERV_ANY_GENRE2;
     case AT_ANY_GENRE3:
@@ -1083,6 +1096,9 @@ CVector<CInstPictures::CInstPictProps>& CInstPictures::GetTable ( const bool bRe
         vecDataBase.Add ( CInstPictProps ( QCoreApplication::translate ( "CClientSettingsDlg", "Rapping" ),
                                            ":/png/instr/res/instruments/rapping.png",
                                            IC_OTHER_INSTRUMENT ) );
+        vecDataBase.Add ( CInstPictProps ( QCoreApplication::translate ( "CClientSettingsDlg", "Vibraphone" ),
+                                           ":/png/instr/res/instruments/vibraphone.png",
+                                           IC_PERCUSSION_INSTRUMENT ) );
 
         // now the table is initialized
         TableIsInitialized = true;

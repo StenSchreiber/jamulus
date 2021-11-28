@@ -39,6 +39,7 @@ CClientDlg::CClientDlg ( CClient*         pNCliP,
     pSettings ( pNSetP ),
     bConnectDlgWasShown ( false ),
     bMIDICtrlUsed ( !strMIDISetup.isEmpty() ),
+    bDetectFeedback ( false ),
     bEnableIPv6 ( bNEnableIPv6 ),
     eLastRecorderState ( RS_UNDEFINED ), // for SetMixerBoardDeco
     eLastDesign ( GD_ORIGINAL ),         //          "
@@ -214,6 +215,9 @@ CClientDlg::CClientDlg ( CClient*         pNCliP,
     // init GUI design
     SetGUIDesign ( pClient->GetGUIDesign() );
 
+    // MeterStyle init
+    SetMeterStyle ( pClient->GetMeterStyle() );
+
     // set the settings pointer to the mixer board (must be done early)
     MainMixerBoard->SetSettingsPointer ( pSettings );
     MainMixerBoard->SetNumMixerPanelRows ( pSettings->iNumMixerPanelRows );
@@ -304,6 +308,12 @@ CClientDlg::CClientDlg ( CClient*         pNCliP,
     // View menu  --------------------------------------------------------------
     QMenu* pViewMenu = new QMenu ( tr ( "&View" ), this );
 
+    // own fader first option: works from server version 3.5.5 which supports sending client ID back to client
+    QAction* OwnFaderFirstAction =
+        pViewMenu->addAction ( tr ( "O&wn Fader First" ), this, SLOT ( OnOwnFaderFirst() ), QKeySequence ( Qt::CTRL + Qt::Key_W ) );
+
+    pViewMenu->addSeparator();
+
     QAction* NoSortAction =
         pViewMenu->addAction ( tr ( "N&o User Sorting" ), this, SLOT ( OnNoSortChannels() ), QKeySequence ( Qt::CTRL + Qt::Key_O ) );
 
@@ -320,6 +330,9 @@ CClientDlg::CClientDlg ( CClient*         pNCliP,
 
     QAction* ByCityAction =
         pViewMenu->addAction ( tr ( "Sort Users by &City" ), this, SLOT ( OnSortChannelsByCity() ), QKeySequence ( Qt::CTRL + Qt::Key_T ) );
+
+    OwnFaderFirstAction->setCheckable ( true );
+    OwnFaderFirstAction->setChecked ( pSettings->bOwnFaderFirst );
 
     // the sorting menu entries shall be checkable and exclusive
     QActionGroup* SortActionGroup = new QActionGroup ( this );
@@ -502,12 +515,11 @@ CClientDlg::CClientDlg ( CClient*         pNCliP,
 
     QObject::connect ( &ClientSettingsDlg, &CClientSettingsDlg::GUIDesignChanged, this, &CClientDlg::OnGUIDesignChanged );
 
+    QObject::connect ( &ClientSettingsDlg, &CClientSettingsDlg::MeterStyleChanged, this, &CClientDlg::OnMeterStyleChanged );
+
     QObject::connect ( &ClientSettingsDlg, &CClientSettingsDlg::AudioChannelsChanged, this, &CClientDlg::OnAudioChannelsChanged );
 
-    QObject::connect ( &ClientSettingsDlg,
-                       &CClientSettingsDlg::CustomCentralServerAddrChanged,
-                       &ConnectDlg,
-                       &CConnectDlg::OnCustomCentralServerAddrChanged );
+    QObject::connect ( &ClientSettingsDlg, &CClientSettingsDlg::DirectoryAddressChanged, &ConnectDlg, &CConnectDlg::OnCustomDirectoryAddressChanged );
 
     QObject::connect ( &ClientSettingsDlg, &CClientSettingsDlg::NumMixerPanelRowsChanged, this, &CClientDlg::OnNumMixerPanelRowsChanged );
 
@@ -1349,8 +1361,6 @@ void CClientDlg::SetGUIDesign ( const EGUIDesign eNewDesign )
                                        "font:  bold;" );
 #endif
 
-        lbrInputLevelL->SetLevelMeterType ( CLevelMeter::MT_LED );
-        lbrInputLevelR->SetLevelMeterType ( CLevelMeter::MT_LED );
         ledBuffers->SetType ( CMultiColorLED::MT_LED );
         ledDelay->SetType ( CMultiColorLED::MT_LED );
         break;
@@ -1365,8 +1375,6 @@ void CClientDlg::SetGUIDesign ( const EGUIDesign eNewDesign )
         rbtReverbSelR->setStyleSheet ( "" );
 #endif
 
-        lbrInputLevelL->SetLevelMeterType ( CLevelMeter::MT_BAR );
-        lbrInputLevelR->SetLevelMeterType ( CLevelMeter::MT_BAR );
         ledBuffers->SetType ( CMultiColorLED::MT_INDICATOR );
         ledDelay->SetType ( CMultiColorLED::MT_INDICATOR );
         break;
@@ -1374,6 +1382,41 @@ void CClientDlg::SetGUIDesign ( const EGUIDesign eNewDesign )
 
     // also apply GUI design to child GUI controls
     MainMixerBoard->SetGUIDesign ( eNewDesign );
+}
+
+void CClientDlg::SetMeterStyle ( const EMeterStyle eNewMeterStyle )
+{
+    // apply MeterStyle to current window
+    switch ( eNewMeterStyle )
+    {
+    case MT_LED:
+        lbrInputLevelL->SetLevelMeterType ( CLevelMeter::MT_LED );
+        lbrInputLevelR->SetLevelMeterType ( CLevelMeter::MT_LED );
+        break;
+
+    case MT_SLIM_LED:
+        lbrInputLevelL->SetLevelMeterType ( CLevelMeter::MT_SLIM_LED );
+        lbrInputLevelR->SetLevelMeterType ( CLevelMeter::MT_SLIM_LED );
+        break;
+
+    case MT_BAR:
+        lbrInputLevelL->SetLevelMeterType ( CLevelMeter::MT_BAR );
+        lbrInputLevelR->SetLevelMeterType ( CLevelMeter::MT_BAR );
+        break;
+
+    case MT_SLIM_BAR:
+        lbrInputLevelL->SetLevelMeterType ( CLevelMeter::MT_BAR );
+        lbrInputLevelR->SetLevelMeterType ( CLevelMeter::MT_BAR );
+        break;
+
+    case MT_SMALL_LED:
+        lbrInputLevelL->SetLevelMeterType ( CLevelMeter::MT_SLIM_LED );
+        lbrInputLevelR->SetLevelMeterType ( CLevelMeter::MT_SLIM_LED );
+        break;
+    }
+
+    // also apply MeterStyle to child GUI controls
+    MainMixerBoard->SetMeterStyle ( eNewMeterStyle );
 }
 
 void CClientDlg::OnRecorderStateReceived ( const ERecorderState newRecorderState )
@@ -1387,6 +1430,8 @@ void CClientDlg::OnGUIDesignChanged()
     SetGUIDesign ( pClient->GetGUIDesign() );
     SetMixerBoardDeco ( MainMixerBoard->GetRecorderState(), pClient->GetGUIDesign() );
 }
+
+void CClientDlg::OnMeterStyleChanged() { SetMeterStyle ( pClient->GetMeterStyle() ); }
 
 void CClientDlg::SetMixerBoardDeco ( const ERecorderState newRecorderState, const EGUIDesign eNewDesign )
 {
